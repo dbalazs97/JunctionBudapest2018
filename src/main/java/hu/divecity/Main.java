@@ -1,21 +1,13 @@
-package com.company;
+package hu.divecity;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import spark.Filter;
-import spark.Request;
-import spark.Response;
 
-import javax.annotation.Resource;
 import java.io.File;
-import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Objects;
 
 import static spark.Spark.*;
 
@@ -63,14 +55,13 @@ public class Main {
 				//response.header("Content-Type", "audio/wav");
 				byte[] bytes = null;
 				try {
-					String a = Main.class.getClassLoader().getResource("please.wav").getFile();
+					String a = Objects.requireNonNull(Main.class.getClassLoader().getResource("please.wav")).getFile();
 					File path = new File(a);
 					bytes = Files.readAllBytes(path.toPath());
 				} catch (Exception e) {
 					e.printStackTrace();
-				}finally {
-					return bytes;
 				}
+					return bytes;
 			});
 
 		} catch (Exception e) {
@@ -79,7 +70,7 @@ public class Main {
 
 	}
 
-	public static void SubsrcribeToNokia() {
+	private static void SubsrcribeToNokia() {
 
 
 		String json = "{\n" +
@@ -120,14 +111,14 @@ public class Main {
 
 	}
 
-	static void UnSubsrcribeToNokia() {
+	private static void UnSubsrcribeToNokia() {
 		Unirest
 				.delete("https://mn.developer.nokia.com/tasseeAPI/callnotification/v1/subscriptions/callDirection/subs?Id=cc12345&addr=sip%3A%2B358480786517%40ims8.wirelessfuture.com")
 				.header("authorization", "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439");
 		System.out.println("Successfully unsubscribed to Nokia TAS.");
 	}
 
-	static String RequestDialedNumbers() {
+	private static String RequestDialedNumbers() {
 		String url = SERVER+"/please.wav";
 		//String url = "http://10.95.86.118/?target=" + encoded;
 		return "{" +
