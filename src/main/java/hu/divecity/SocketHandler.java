@@ -1,7 +1,11 @@
 package hu.divecity;
 
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.SocketIONamespace;
+import com.corundumstudio.socketio.SocketIOServer;
+
 import java.util.ArrayList;
-import com.corundumstudio.socketio.*;
 
 public class SocketHandler {
 	Configuration configuration = new Configuration();
@@ -16,5 +20,10 @@ public class SocketHandler {
 		server.addDisconnectListener(socketIOClient -> clients.remove(socketIOClient));
 
 		SocketIONamespace smarthome = server.addNamespace("smarthome");
+	}
+
+	public void SendToClient(SocketIOClient client, Integer deviceID, ActionID actionID, String detail) {
+		String json = String.format("{\"target\" : %d, \"action\": %d, \"detail\": \"%s\"}", deviceID, actionID.ordinal(), detail);
+		client.sendEvent("enentChange", json);
 	}
 }
