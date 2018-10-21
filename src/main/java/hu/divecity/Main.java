@@ -48,13 +48,6 @@ public class Main {
 
 		try {
 			port(1234);
-			before("/*", (request, response) -> {
-				try {
-					System.out.println("REQUEST FROM: " + request.url() + "::" + request.requestMethod() + "\n[" + request.body() + "]\n[" + response.body() + "]\n");
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			});
 
 			get("/", (request, response) -> "Hello");
 			post("/dial", (request, response) -> "");
@@ -66,6 +59,8 @@ public class Main {
 				JSONObject jso = new JSONObject(req.body());
 
 				Caller caller = (jso.getJSONObject("callEventNotification").getString("callingParticipant").equals(caller16.phoneNumber))? caller16 : caller17;
+
+				System.out.println("CALL "+ jso.getJSONObject("callEventNotification").getString("callingParticipant")+ " -> "+jso.getJSONObject("callEventNotification").getString("calledParticipant"));
 
 				socketHandler.handleCall(caller, 0, "");
 				return RequestDialedNumbers(caller);
@@ -103,9 +98,9 @@ public class Main {
 
 			if (js.getStatus() == 200 || js.getStatus() == 201) {
 				//System.out.println(js.getBody().toString());
-				System.out.println("Successfully subscribed to Nokia TAS.");
+				System.out.println("SUBSCRIBED " + who.phoneNumber);
 			} else {
-				System.out.println("There was an error while subscribing with code " + js.getStatus() + " - " + js.getBody());
+				System.out.println("SUBSCRIPTION ERROR " + js.getStatus() + " - " + js.getBody());
 				//System.exit(100);
 			}
 		} catch (UnirestException e) {
@@ -118,14 +113,13 @@ public class Main {
 		Unirest
 				.delete("https://mn.developer.nokia.com/tasseeAPI/callnotification/v1/subscriptions/callDirection/subs?Id=" + who.correlator + "&addr=" + URLEncoder.encode(who.phoneNumber))
 				.header("authorization", "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439");
-		System.out.println("Successfully unsubscribed to Nokia TAS.");
+		System.out.println("UNSUBSCRIBED " + who.phoneNumber);
 		if (deleteSocket)
 			socketHandler.close();
 	}
 
 	private static String RequestDialedNumbers(Caller who) {
 		String url = SERVER + "/please.wav";
-		//String url = "http://10.95.86.118/?target=" + encoded;
 		return "{" +
 				"   \"action\": {" +
 				"      \"actionToPerform\": \"Continue\"," +

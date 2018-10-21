@@ -51,7 +51,7 @@ public class SocketHandler extends WebSocketServer {
 	}
 
 	public void handleCall(Caller caller, Integer target, String detail) {
-		System.out.println("WEBSOCKET OUT: {\"target\": " + target.toString() + ", \"action\": " + caller.action.ordinal() + ", \"detail\": \"" + detail + "\"}");
+		System.out.println("WEBSOCKET RESPONSE TO "+caller.phoneNumber+": {\"target\": " + target.toString() + ", \"action\": " + caller.action.ordinal() + ", \"detail\": \"" + detail + "\"}");
 		((caller.equals(caller16)) ? caller16.socket : caller17.socket).send("{\"target\": " + target.toString() + ", \"action\": " + caller.action.ordinal() + ", \"detail\": \"" + detail + "\"}");
 	}
 
