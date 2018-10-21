@@ -11,7 +11,7 @@ public class SocketHandler {
 	Configuration configuration = new Configuration();
 	private ArrayList<SocketIOClient> clients;
 
-	public SocketHandler(Configuration configuration) {
+	public SocketHandler() {
 		configuration.setHostname("localhost");
 		configuration.setPort(3000);
 		final SocketIOServer server = new SocketIOServer(configuration);

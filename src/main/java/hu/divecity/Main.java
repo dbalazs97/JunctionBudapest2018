@@ -1,5 +1,6 @@
 package hu.divecity;
 
+import com.corundumstudio.socketio.SocketIOClient;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
@@ -7,6 +8,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Objects;
 
 import static spark.Spark.*;
@@ -17,8 +19,11 @@ public class Main {
 	private static final String PHONE = "sip:+358480786517@ims8.wirelessfuture.com";
 	private static final String OTHERPHONE = "sip:+358480786516@ims8.wirelessfuture.com";
 	private static final String SERVER = "http://692b8ba4.ngrok.io";
+	private static SocketHandler socketHandler = new SocketHandler();
+	private static final HashMap<String, SocketIOClient> phoneToClient = new HashMap<>();
 
 	public static void main(String[] args) {
+
 		Runtime.getRuntime().addShutdownHook(new Thread(Main::UnSubsrcribeToNokia));
 		SubsrcribeToNokia();
 		try {
@@ -37,7 +42,7 @@ public class Main {
 				res.header("content-type", "application/json");
 				res.header("authorization", "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439");
 				res.body(RequestDialedNumbers());
-				return RequestDialedNumbers();
+				return "";//RequestDialedNumbers();
 			});
 
 			post("/dial", (req, res) -> {
@@ -71,8 +76,6 @@ public class Main {
 	}
 
 	private static void SubsrcribeToNokia() {
-
-
 		String json = "{\n" +
 				"  \"callDirectionSubscription\": {\n" +
 				"    \"callbackReference\": {\n" +
