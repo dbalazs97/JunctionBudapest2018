@@ -4,34 +4,47 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import org.json.JSONObject;
 
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.UUID;
 
 import static spark.Spark.*;
 
 public class Main {
+	// from 16, to 17
 
 	private static final String API_KEY = "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439";
-	private static final String PHONE = "sip:+358480786517@ims8.wirelessfuture.com";
-	private static final String OTHERPHONE = "sip:+358480786516@ims8.wirelessfuture.com";
+	public static final String PHONE17 = "sip:+358480786517@ims8.wirelessfuture.com";
+	private static final String PHONE16 = "sip:+358480786516@ims8.wirelessfuture.com";
 	private static final String SERVER = "http://943ede25.ngrok.io";
 	private static SocketHandler socketHandler;
 	private static String correlator;
 
+	public static final Caller caller16 = new Caller(PHONE16, UUID.randomUUID().toString(), ActionID.ACTION_ON);
+	public static final Caller caller17 = new Caller(PHONE17, UUID.randomUUID().toString(), ActionID.ACTION_OFF);
+
 	private static final HashMap<String, Integer> phoneToClient = new HashMap<>();
 
 	public static void main(String[] args) {
-		CloseConnections(false);
+		CloseConnections(false, caller16);
+		CloseConnections(false, caller17);
+
 		correlator = String.valueOf(UUID.randomUUID());
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> Main.CloseConnections(true)));
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			Main.CloseConnections(true, caller16);
+			Main.CloseConnections(true, caller17);
+		}));
 		try {
 			socketHandler = new SocketHandler(4321);
 			socketHandler.start();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		SubsrcribeToNokia();
+
+		SubsrcribeToNokia(caller16);
+		SubsrcribeToNokia(caller17);
 
 		try {
 			port(1234);
@@ -44,19 +57,25 @@ public class Main {
 			});
 
 			get("/", (request, response) -> "Hello");
+			post("/dial", (request, response) -> "");
 
 			post("/", (req, res) -> {
 				res.header("content-type", "application/json");
 				res.header("authorization", "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439");
-				socketHandler.handleCall(PHONE, Math.random() < 0.5 ? 1 : 0, ActionID.ACTION_ON, "" );
-				return "";
+
+				JSONObject jso = new JSONObject(req.body());
+
+				Caller caller = (jso.getJSONObject("callEventNotification").getString("callingParticipant").equals(caller16.phoneNumber))? caller16 : caller17;
+
+				socketHandler.handleCall(caller, 0, "");
+				return RequestDialedNumbers(caller);
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static void SubsrcribeToNokia() {
+	private static void SubsrcribeToNokia(Caller who) {
 		String json = "{\n" +
 				"  \"callDirectionSubscription\": {\n" +
 				"    \"callbackReference\": {\n" +
@@ -64,14 +83,14 @@ public class Main {
 				"    },\n" +
 				"    \"filter\": {\n" +
 				"      \"address\": [\n" +
-				"        \"" + PHONE + "\"\n" +
+				"        \"" + who.phoneNumber + "\"\n" +
 				"      ],\n" +
 				"      \"criteria\": [\n" +
 				"        \"CalledNumber\"\n" +
 				"      ],\n" +
 				"      \"addressDirection\": \"Called\"\n" +
 				"    },\n" +
-				"    \"clientCorrelator\": \""+correlator+"\"\n" +
+				"    \"clientCorrelator\": \"" + who.correlator + "\"\n" +
 				"  }\n" +
 				"}";
 
@@ -82,7 +101,7 @@ public class Main {
 					.body(json)
 					.asJson();
 
-			if (js.getStatus() == 200) {
+			if (js.getStatus() == 200 || js.getStatus() == 201) {
 				//System.out.println(js.getBody().toString());
 				System.out.println("Successfully subscribed to Nokia TAS.");
 			} else {
@@ -95,22 +114,21 @@ public class Main {
 
 	}
 
-	private static void CloseConnections(Boolean deleteSocket) {
+	private static void CloseConnections(Boolean deleteSocket, Caller who) {
 		Unirest
-				.delete("https://mn.developer.nokia.com/tasseeAPI/callnotification/v1/subscriptions/callDirection/subs?Id="+correlator+"&addr=sip%3A%2B358480786516%40ims8.wirelessfuture.com")
+				.delete("https://mn.developer.nokia.com/tasseeAPI/callnotification/v1/subscriptions/callDirection/subs?Id=" + who.correlator + "&addr=" + URLEncoder.encode(who.phoneNumber))
 				.header("authorization", "5a8b14c1a353b4000197972f863d73874d4d4ffdbf3387b88a834439");
 		System.out.println("Successfully unsubscribed to Nokia TAS.");
-		if(deleteSocket)
+		if (deleteSocket)
 			socketHandler.close();
 	}
 
-	private static String RequestDialedNumbers() {
+	private static String RequestDialedNumbers(Caller who) {
 		String url = SERVER + "/please.wav";
 		//String url = "http://10.95.86.118/?target=" + encoded;
 		return "{" +
 				"   \"action\": {" +
 				"      \"actionToPerform\": \"Continue\"," +
-				"      \"displayAddress\": \"" + OTHERPHONE + "\"," +
 				"      \"digitCapture\": {" +
 				"         \"digitConfiguration\": {" +
 				"            \"maxDigits\": 10," +
@@ -121,7 +139,7 @@ public class Main {
 				"            \"playFileLocation\": \"" + url + "\"" +
 				"         }," +
 				"         \"callParticipant\": [" +
-				"            \"" + OTHERPHONE + "\"" +
+				"            \"" + who.phoneNumber + "\"" +
 				"         ]" +
 				"      }," +
 				"      \"playAndCollectInteractionSubscription\": {" +

@@ -6,11 +6,10 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
+
+import static hu.divecity.Main.*;
 
 public class SocketHandler extends WebSocketServer {
-	private ArrayList<WebSocket> clients = new ArrayList<>();
-	private HashMap<String, WebSocket> map = new HashMap<>();
 
 	public SocketHandler(int address) {
 		super(new InetSocketAddress(address));
@@ -19,7 +18,6 @@ public class SocketHandler extends WebSocketServer {
 	@Override
 	public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
 		try {
-			clients.add(webSocket);
 			printSocket(webSocket, " connected.");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -33,9 +31,7 @@ public class SocketHandler extends WebSocketServer {
 	@Override
 	public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
 		try {
-			clients.remove(webSocket);
 			printSocket(webSocket, " disconnected.");
-			webSocket.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -44,15 +40,19 @@ public class SocketHandler extends WebSocketServer {
 	@Override
 	public void onMessage(WebSocket webSocket, String message) {
 		try {
+			if (message.equals(caller16.phoneNumber))
+				caller16.socket = webSocket;
+			else
+				caller17.socket = webSocket;
 			printSocket(webSocket, " sent: " + message);
-			map.put(message, webSocket);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	public void handleCall(String webSocket, Integer target, ActionID action, String detail) {
-		map.get(webSocket).send("{\"target\": " + target.toString() + ", \"action\": " + action.ordinal() + ", \"detail\": \"" + detail + "\"}");
+	public void handleCall(Caller caller, Integer target, String detail) {
+		System.out.println("WEBSOCKET OUT: {\"target\": " + target.toString() + ", \"action\": " + caller.action.ordinal() + ", \"detail\": \"" + detail + "\"}");
+		((caller.equals(caller16)) ? caller16.socket : caller17.socket).send("{\"target\": " + target.toString() + ", \"action\": " + caller.action.ordinal() + ", \"detail\": \"" + detail + "\"}");
 	}
 
 	@Override
@@ -71,8 +71,7 @@ public class SocketHandler extends WebSocketServer {
 	}
 
 	public void close() {
-		for (WebSocket client : clients) {
-			client.close();
-		}
+		caller16.socket.close();
+		caller17.socket.close();
 	}
 }
