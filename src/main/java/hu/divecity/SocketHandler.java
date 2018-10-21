@@ -1,29 +1,78 @@
 package hu.divecity;
 
-import com.corundumstudio.socketio.Configuration;
-import com.corundumstudio.socketio.SocketIOClient;
-import com.corundumstudio.socketio.SocketIONamespace;
-import com.corundumstudio.socketio.SocketIOServer;
+import org.java_websocket.WebSocket;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 
-public class SocketHandler {
-	Configuration configuration = new Configuration();
-	private ArrayList<SocketIOClient> clients;
+public class SocketHandler extends WebSocketServer {
+	private ArrayList<WebSocket> clients = new ArrayList<>();
+	private HashMap<String, WebSocket> map = new HashMap<>();
 
-	public SocketHandler() {
-		configuration.setHostname("localhost");
-		configuration.setPort(3000);
-		final SocketIOServer server = new SocketIOServer(configuration);
-
-		server.addConnectListener(socketIOClient -> clients.add(socketIOClient));
-		server.addDisconnectListener(socketIOClient -> clients.remove(socketIOClient));
-
-		SocketIONamespace smarthome = server.addNamespace("smarthome");
+	public SocketHandler(int address) {
+		super(new InetSocketAddress(address));
 	}
 
-	public void SendToClient(SocketIOClient client, Integer deviceID, ActionID actionID, String detail) {
-		String json = String.format("{\"target\" : %d, \"action\": %d, \"detail\": \"%s\"}", deviceID, actionID.ordinal(), detail);
-		client.sendEvent("enentChange", json);
+	@Override
+	public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
+		try {
+			clients.add(webSocket);
+			printSocket(webSocket, " connected.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void printSocket(WebSocket s, String s2) {
+		System.out.println(s.getRemoteSocketAddress().toString() + s2);
+	}
+
+	@Override
+	public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
+		try {
+			clients.remove(webSocket);
+			printSocket(webSocket, " disconnected.");
+			webSocket.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void onMessage(WebSocket webSocket, String message) {
+		try {
+			printSocket(webSocket, " sent: " + message);
+			map.put(message, webSocket);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void handleCall(String webSocket, Integer target, ActionID action, String detail) {
+		map.get(webSocket).send("{\"target\": " + target.toString() + ", \"action\": " + action.ordinal() + ", \"detail\": \"" + detail + "\"}");
+	}
+
+	@Override
+	public void onError(WebSocket webSocket, Exception e) {
+		try {
+			if (e != null && webSocket != null)
+				printSocket(webSocket, " got an error " + e.toString());
+		} catch (Exception f) {
+			f.printStackTrace();
+		}
+	}
+
+	@Override
+	public void onStart() {
+		System.out.println("Websocket started opened at " + this.getAddress().toString());
+	}
+
+	public void close() {
+		for (WebSocket client : clients) {
+			client.close();
+		}
 	}
 }
